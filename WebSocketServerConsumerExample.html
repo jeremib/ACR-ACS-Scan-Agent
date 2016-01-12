@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>
+        Test
+    </title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+    <script src="http://code.jquery.com/ui/1.9.2/jquery-ui.js"></script>
+<script type="text/javascript">
+    
+    var ws;
+    function connectToWebsocket() {
+        var support = "MozWebSocket" in window ? 'MozWebSocket' : ("WebSocket" in window ? 'WebSocket' : null);
+        if (support == null) {
+            alert("Your browser does not support websocket");
+            return;
+        }
+        ws = new window[support]('ws://localhost:2525/');
+
+        // when data is comming from the server, this metod is called
+        ws.onmessage = function (evt) {
+            var response = JSON.parse(evt.data);
+            console.log(response);
+            var action = response.Action;
+            switch (action) {
+                case "checkDevice":
+                    {
+                        //process check device response
+                        checkDeviceStatusResponse(response);
+                        break;
+                    }
+
+                case "write":
+                    {
+                        //process write response
+                        checkWriteResponse(response);
+                        break;
+                    }
+                case "clear":
+                    {
+                        //process clear response
+                        checkClearResponse(response);
+                        break;
+                    }
+
+                case "read":
+                    {
+                        //process read response
+                        checkReadResponse(response);
+                        break;
+                    }
+
+
+                default:
+                    {
+                        //unexpected action
+                        break;
+                    }
+
+            }
+        };
+
+        // when the connection is established, this method is called
+        ws.onopen = function () {
+            checkIfDeviceisconnected();
+            jQuery("#connStatus").html("Connected!");
+        };
+
+        // when the connection is closed, this method is called
+        ws.onclose = function () {
+            jQuery("#connStatus").html("Not Connected!");
+        }
+
+
+    }
+
+    ///disconect from server
+    function disconnectWebSocket() {
+        if (ws) {
+            ws.close();
+
+        }
+    }
+
+    //Response for Check device status
+    function checkDeviceStatusResponse(response) {
+        var errorCode = response.ErrorCode;
+        if (errorCode == 0) {
+            appendMessage("Check device response:" + "device is connected");
+            //all ok , device is connected
+        } else {
+            if (errorCode == -1) {
+                appendMessage("Check device response:" + response.ErrorMessage);
+                //device not connected
+            } else {
+                appendMessage("Check device response:" + response.ErrorMessage);
+                //unknown response
+            }
+        }
+    }
+
+    //response for clear action
+    function checkClearResponse() {
+        switch (response.ErrorCode) {
+        case 0:
+        {
+            appendMessage("Write response:Succes write");
+            break;
+        }
+        case -1:
+        {
+            //device not connected
+            appendMessage("Write response:" + response.ErrorMessage);
+            break;
+        }
+        case 1:
+        {
+            //write data is empty
+            appendMessage("Write response:" + response.ErrorMessage);
+            break;
+        }
+        case 6:
+        {
+            //Card is not inserted
+            appendMessage("Write response:" + response.ErrorMessage);
+            break;
+        }
+        default:
+        {
+            //unexpected response
+            appendMessage("Unexpected error");
+            break;
+        }
+        }
+    }
+
+
+    //response for write command
+    function checkWriteResponse(response) {
+        switch (response.ErrorCode) {
+        case 0:
+        {
+            //Succes
+            appendMessage("Write response:Succes write");
+            break;
+        }
+        case 1:
+        {
+            //cart is not inserted
+            appendMessage("Write response:" + response.ErrorMessage);
+            break;
+        }
+        case -1:
+        {
+            //device not connected
+            appendMessage("Write response:" + response.ErrorMessage);
+            break;
+        }
+        case 4:
+        {
+            //data that needs to be written is empty
+            appendMessage("Write response:" + response.ErrorMessage);
+            break;
+        }
+
+        case 6:
+        {
+            //Card is not inserted
+            appendMessage("Write response:" + response.ErrorMessage);
+            break;
+        }
+        default:
+        {
+            //unexpected response
+            appendMessage("Write response:" + response.ErrorMessage);
+            break;
+        }
+        }
+    }
+    //Response for read command
+    function checkReadResponse(response) {
+        debugger;
+        switch (response.ErrorCode) {
+        case 0:
+        {
+            appendMessage("Read response:Succes,Data:" + response.Data);
+            console.log("object:");
+            var deserializedObjectfromStringToJson = JSON.parse(response.Data);
+            console.log(deserializedObjectfromStringToJson);
+            //write succes
+            break;
+        }
+        case -1:
+        {
+            appendMessage("Read response:" + response.ErrorMessage);
+            //device not connected
+            break;
+        }
+        case 1:
+        {
+            //write data is empty
+            appendMessage("Read response:" + response.ErrorMessage);
+            break;
+        }
+        case 2:
+        {
+            //Card is not inserted.
+            appendMessage("Read response:" + response.ErrorMessage);
+            break;
+        }
+        default:
+        {
+            //unexpected response
+            appendMessage("Read response:" + response.ErrorMessage);
+            break;
+        }
+        }
+    }
+    //simulate some json data to write
+    function getDataToWrite() {
+        var obj = new {
+            i: "185149",
+            c: 93432,
+            s: "0490100aba2984"
+        };
+        return JSON.stringify(obj);
+    }
+    //send action to server-read
+    function readCard() {
+        var readObject = {
+            Action: "read"
+        }
+        if (ws) {
+            ws.send(JSON.stringify(readObject));
+        }
+    }
+
+    
+    //send action to server - write data
+    function writeCard() {
+        var writeObject = {
+            Action: "write",
+            Data: getDataToWrite()
+        }
+        if (ws) {
+            ws.send(JSON.stringify(writeObject));
+        }
+    }
+    //send action to server - check if device is connected
+    function checkIfDeviceisconnected() {
+        var checkDeviceStatusObject = {
+            Action: "checkDevice"
+        }
+        if (ws) {
+            ws.send(JSON.stringify(checkDeviceStatusObject));
+        }
+    }
+    //send action to server - clear inserted card
+    function clearInsertedCard() {
+        var clearObject = {
+            Action: "clear"
+        }
+        if (ws) {
+            ws.send(JSON.stringify(clearObject));
+        }
+    }
+   
+    function appendMessage(message) {
+        jQuery("#logResponse").html(message);
+    }
+
+    //on document ready connect to server
+    jQuery(document).ready(function () {
+        connectToWebsocket();
+    });
+</script>
+
+</head>
+<body>
+
+<div class="row" style="margin-top: 35px">
+    <div class="col-md-4">
+        <label>Connection status:</label> <span id="connStatus">Not connected</span><br/><br/>
+
+        <label>Device status:</label> <span id="deviceStatus">Not connected</span><br/><br/>
+
+        <button onclick="connectToWebsocket()">Connect to websocket</button><br/><br/>
+
+        <button onclick="disconnectWebSocket()">Disconnect from websocket</button><br/><br/>
+
+        <button onclick="checkIfDeviceisconnected()">Check device status</button><br/><br/>
+
+        <button onclick="readCard()">Read card</button><br/><br/>
+
+        <button onclick="writeCard()">Write card</button><br/><br/>
+
+        <button onclick="clearInsertedCard()">Clear card</button><br/><br/>
+
+        <textarea style="width: 500px; height: 50px" id="logResponse"></textarea>
+
+    </div>
+</div>
+
+</body>
+
+</html>
